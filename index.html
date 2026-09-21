@@ -1,90 +1,74 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>My Tiny Game</title>
-  <style>
-    body {
-      font-family: monospace;
-      max-width: 600px;
-      margin: 50px auto;
-      padding: 20px;
-      background: #111;
-      color: #eee;
-    }
-
-    button {
-      display: block;
-      margin: 10px 0;
-      padding: 10px;
-      width: 100%;
-      background: #222;
-      color: white;
-      border: 1px solid #555;
-      cursor: pointer;
-    }
-
-    button:hover {
-      background: #333;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAF Work Rate Practice</title>
+    <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
+    <div class="container">
+        <h1>RAF Work Rate Practice</h1>
+        
+        <div class="stats">
+            <div class="stat">
+                <span class="label">Score:</span>
+                <span id="score" class="value">0/0</span>
+            </div>
+            <div class="stat">
+                <span class="label">Accuracy:</span>
+                <span id="accuracy" class="value">0%</span>
+            </div>
+            <div class="stat">
+                <span class="label">Time:</span>
+                <span id="timer" class="value">12</span>s
+            </div>
+        </div>
 
-  <h1>THE DOOR</h1>
+        <div class="question-box">
+            <h2>Question <span id="questionNumber">1</span></h2>
+            
+            <div class="table-section">
+                <table id="dataTable">
+                    <tr>
+                        <td id="cell00"></td>
+                        <td id="cell01"></td>
+                        <td id="cell02"></td>
+                        <td id="cell03"></td>
+                    </tr>
+                    <tr>
+                        <td id="cell10"></td>
+                        <td id="cell11"></td>
+                        <td id="cell12"></td>
+                        <td id="cell13"></td>
+                    </tr>
+                    <tr>
+                        <td id="cell20"></td>
+                        <td id="cell21"></td>
+                        <td id="cell22"></td>
+                        <td id="cell23"></td>
+                    </tr>
+                </table>
+            </div>
 
-  <p id="text">
-    You wake up in a dark room.
-    There is a door in front of you.
-  </p>
+            <div class="code-section">
+                <p>Code: <span id="code" class="code-display">A B C</span></p>
+            </div>
 
-  <div id="buttons">
-    <button onclick="openDoor()">Open the door</button>
-    <button onclick="wait()">Wait</button>
-  </div>
+            <div class="options">
+                <button class="option" onclick="checkAnswer(0)"><span id="opt0">1 2 3</span></button>
+                <button class="option" onclick="checkAnswer(1)"><span id="opt1">1 2 3</span></button>
+                <button class="option" onclick="checkAnswer(2)"><span id="opt2">1 2 3</span></button>
+                <button class="option" onclick="checkAnswer(3)"><span id="opt3">1 2 3</span></button>
+                <button class="option" onclick="checkAnswer(4)"><span id="opt4">1 2 3</span></button>
+            </div>
 
-  <script>
-    function openDoor() {
-      document.getElementById("text").innerText =
-        "You open the door. There is a chicken standing outside. It looks at you.";
+            <div id="feedback" class="feedback"></div>
+        </div>
 
-      document.getElementById("buttons").innerHTML =
-        '<button onclick="talk()">Talk to the chicken</button>' +
-        '<button onclick="run()">Run away</button>';
-    }
+        <button id="nextBtn" class="next-btn" onclick="nextQuestion()" style="display:none;">Next Question</button>
+    </div>
 
-    function wait() {
-      document.getElementById("text").innerText =
-        "You wait... Nothing happens. Then you hear a knock behind you.";
-
-      document.getElementById("buttons").innerHTML =
-        '<button onclick="turnAround()">Turn around</button>';
-    }
-
-    function talk() {
-      document.getElementById("text").innerText =
-        "The chicken says: \"You have made an excellent choice.\" YOU WIN.";
-
-      document.getElementById("buttons").innerHTML =
-        '<button onclick="location.reload()">Play again</button>';
-    }
-
-    function run() {
-      document.getElementById("text").innerText =
-        "You run away. You trip over a rock. The chicken judges you.";
-
-      document.getElementById("buttons").innerHTML =
-        '<button onclick="location.reload()">Try again</button>';
-    }
-
-    function turnAround() {
-      document.getElementById("text").innerText =
-        "There is nothing there. You probably imagined it.";
-
-      document.getElementById("buttons").innerHTML =
-        '<button onclick="location.reload()">Start over</button>';
-    }
-  </script>
-
+    <script src="script.js"></script>
 </body>
 </html>
