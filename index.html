@@ -1,95 +1,28 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RAF Work Rate Practice</title>
-    <link rel="stylesheet" href="style.css">
-</head>
-<body>
-    <div class="container">
-        <h1>RAF Work Rate Practice</h1>
-        
-        <div class="stats">
-            <div class="stat">
-                <span class="label">Score:</span>
-                <span id="score" class="value">0/0</span>
-            </div>
-            <div class="stat">
-                <span class="label">Accuracy:</span>
-                <span id="accuracy" class="value">0%</span>
-            </div>
-            <div class="stat">
-                <span class="label">Time:</span>
-                <span id="timer" class="value">4:00</span>
-            </div>
-        </div>
+# RAF Work Rate Test Simulator
 
-        <!-- START SCREEN -->
-        <div id="startScreen" class="question-box" style="text-align: center; padding: 40px 20px;">
-            <h2 style="margin-bottom: 20px;">RAF Work Rate Practice Test</h2>
-            <p style="font-size: 16px; margin-bottom: 30px; color: #666;">
-                20 Questions<br>
-                4 Minutes Total<br>
-                12 Seconds Per Question (Average)
-            </p>
-            <button onclick="startTest()" style="
-                padding: 15px 40px;
-                font-size: 18px;
-                background: #667eea;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                cursor: pointer;
-                font-weight: bold;
-            ">Start Test</button>
-        </div>
+A browser-based simulation of the RAF Work Rate (Code Checking) test used 
+in RAF aptitude assessments.
 
-        <!-- QUESTION SCREEN -->
-        <div id="questionScreen" class="question-box" style="display: none;">
-            <h2>Question <span id="questionNumber">1</span></h2>
-            
-            <div class="table-section">
-                <table id="dataTable">
-                    <tr>
-                        <td id="cell00"></td>
-                        <td id="cell01"></td>
-                        <td id="cell02"></td>
-                        <td id="cell03"></td>
-                    </tr>
-                    <tr>
-                        <td id="cell10"></td>
-                        <td id="cell11"></td>
-                        <td id="cell12"></td>
-                        <td id="cell13"></td>
-                    </tr>
-                    <tr>
-                        <td id="cell20"></td>
-                        <td id="cell21"></td>
-                        <td id="cell22"></td>
-                        <td id="cell23"></td>
-                    </tr>
-                </table>
-            </div>
+## What it does
+- Generates 20 randomized questions from a shuffled grid of letters, 
+  numbers, and symbols
+- 4-minute timer (matching the real test conditions)
+- Auto-advances on answer selection
+- Scores accuracy and completion
 
-            <div class="code-section">
-                <p>Code: <span id="code" class="code-display">A B C</span></p>
-            </div>
+## How to use
+Open `index.html` in any modern browser, or visit the live demo:
 
-            <div class="options">
-                <button class="option" onclick="checkAnswer(0)"><span id="opt0">1 2 3</span></button>
-                <button class="option" onclick="checkAnswer(1)"><span id="opt1">1 2 3</span></button>
-                <button class="option" onclick="checkAnswer(2)"><span id="opt2">1 2 3</span></button>
-                <button class="option" onclick="checkAnswer(3)"><span id="opt3">1 2 3</span></button>
-                <button class="option" onclick="checkAnswer(4)"><span id="opt4">1 2 3</span></button>
-            </div>
+**[Live Demo](https://yourusername.github.io/raf-work-rate-test/)**
 
-            <div id="feedback" class="feedback"></div>
-        </div>
+## How the test works
+You're given a code (e.g. `RDS`). You must find the option (A–E) that 
+uses the *other items* from the *same columns* in the *same order*.
 
-        <button id="nextBtn" class="next-btn" onclick="nextQuestion()" style="display:none;">Next Question</button>
-    </div>
+## Disclaimer
+This is an unofficial practice tool. It is not affiliated with or 
+endorsed by the UK Ministry of Defence or the Royal Air Force. 
+Actual test conditions and grids may differ.
 
-    <script src="script.js"></script>
-</body>
-</html>
+## License
+MIT (or whatever you prefer)
