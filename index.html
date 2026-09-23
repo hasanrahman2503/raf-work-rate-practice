@@ -1,8 +1,9 @@
-<!DOCTYPE html>
+#<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Practice simulator for the RAF Work Rate (code checking) aptitude test.">
     <title>RAF Work Rate Test Simulation</title>
     <style>
         :root {
@@ -304,11 +305,9 @@
     const resultMessage = document.getElementById('resultMessage');
 
     // --- Character Pools (to simulate random grids) ---
-    // Note: In the real test, symbols are limited to specific shapes.
-    // We use simple ASCII symbols here for broad compatibility.
     const LETTERS_POOL = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
     const NUMBERS_POOL = '0123456789'.split('');
-    const SYMBOLS_POOL = ['●', '▲', '▼', '■', '★', '♦', '♣', '♠', '♥', '◊', '○', '□', '△', '▽', '※', '§', '¶', '†', '‡', 'µ', '¶', 'Ω', 'Σ', 'Φ', 'Ψ', 'α', 'β', 'γ', 'δ', 'ε'];
+    const SYMBOLS_POOL = ['●', '▲', '▼', '■', '★', '♦', '♣', '♠', '♥', '◊', '○', '□', '△', '▽', '※', '§', '¶', '†', '‡', 'µ', 'Ω', 'Σ', 'Φ', 'Ψ', 'α', 'β', 'γ', 'δ', 'ε'];
 
     // --- Core Logic ---
 
@@ -325,22 +324,18 @@
 
     /**
      * Generates a single question object.
-     * Structure:
-     * {
-     *   grid: { letters: [], numbers: [], symbols: [] }, // Each has 4 items
-     *   code: ['R', 'D', 'S'], // Mixed types
-     *   options: [ { code: '7▼3', correct: false }, ... ],
-     *   correctIndex: 0
-     * }
+     * 
+     * Rules (matching the real RAF Work Rate test):
+     * - The code is EITHER all letters OR all numbers.
+     * - The correct alternative swaps letters <-> numbers, using the same columns.
+     * - Distractors use the same character pool as the correct answer.
      */
     function generateQuestion() {
         // 1. Create a grid with 4 columns.
-        // We pick 4 distinct letters, numbers, and symbols.
         const shuffledLetters = shuffle([...LETTERS_POOL]).slice(0, 4);
         const shuffledNumbers = shuffle([...NUMBERS_POOL]).slice(0, 4);
         const shuffledSymbols = shuffle([...SYMBOLS_POOL]).slice(0, 4);
 
-        // Grid structure: Each column index (0-3) maps to { letter, number, symbol }
         const grid = [];
         for (let i = 0; i < 4; i++) {
             grid.push({
@@ -350,72 +345,57 @@
             });
         }
 
-        // 2. Generate the original code.
-        // Choose 3 random column indices.
+        // 2. Choose 3 random column indices for the code.
         const columnIndices = [0, 1, 2, 3];
         shuffle(columnIndices);
-        const codeColumns = columnIndices.slice(0, 3); // The columns used for this code
+        const codeColumns = columnIndices.slice(0, 3);
 
-        // For each of the 3 code columns, randomly pick a type: letter, number, or symbol.
-        const types = ['letter', 'number', 'symbol'];
+        // 3. The code is EITHER all letters OR all numbers (matching the real test).
+        const codeType = Math.random() < 0.5 ? 'letter' : 'number';
+
         const originalCodeItems = [];
         const originalCodeString = [];
 
         for (let col of codeColumns) {
-            const type = types[Math.floor(Math.random() * types.length)];
-            const item = grid[col][type];
-            originalCodeItems.push({ column: col, type: type, value: item });
+            const item = grid[col][codeType];
+            originalCodeItems.push({ column: col, type: codeType, value: item });
             originalCodeString.push(item);
         }
 
-        // 3. Generate the correct alternative code.
-        // For each part of the original code, pick a DIFFERENT type from the SAME column.
+        // 4. The correct alternative swaps letters <-> numbers, same columns.
+        //    If code is letters -> answer uses numbers; if code is numbers -> answer uses letters.
+        const alternativeType = codeType === 'letter' ? 'number' : 'letter';
+
         const correctAlternativeItems = [];
         const correctAlternativeString = [];
 
         for (let item of originalCodeItems) {
             const col = item.column;
-            const availableTypes = ['letter', 'number', 'symbol'].filter(t => t !== item.type);
-            const newType = availableTypes[Math.floor(Math.random() * availableTypes.length)];
-            const newVal = grid[col][newType];
+            const newVal = grid[col][alternativeType];
             correctAlternativeItems.push(newVal);
             correctAlternativeString.push(newVal);
         }
 
-        // 4. Generate distractors.
-        // We need 4 wrong options. 
-        // Strategies: 
-        // - Swap column order (shuffle correct items)
-        // - Use items from wrong columns
-        // - Mix both
-        
+        // 5. Generate distractors using the same character pool (letters or numbers).
         const options = [];
-        // Add the correct one
         options.push({ code: correctAlternativeString.join(''), correct: true });
 
         while (options.length < OPTION_COUNT) {
-            // Generate a candidate
             let candidateItems = [];
             let isValidDistractor = false;
             let attempts = 0;
-            
-            // Try to make a plausible distractor (using items from the correct columns, but wrong types or order)
-            // Simple strategy: Pick 3 random columns, and pick random types.
+
             while (!isValidDistractor && attempts < 50) {
                 attempts++;
-                const randCols = shuffle([...columnIndices]).slice(0, 3); // 3 random distinct columns
+                const randCols = shuffle([...columnIndices]).slice(0, 3);
                 candidateItems = [];
                 for (let col of randCols) {
-                    const type = types[Math.floor(Math.random() * types.length)];
-                    candidateItems.push(grid[col][type]);
+                    candidateItems.push(grid[col][alternativeType]);
                 }
-                
+
                 const candidateStr = candidateItems.join('');
-                
-                // Check it's not the correct answer
+
                 if (candidateStr === correctAlternativeString.join('')) continue;
-                
-                // Check it doesn't already exist in options
                 if (!options.some(o => o.code === candidateStr)) {
                     isValidDistractor = true;
                     options.push({ code: candidateStr, correct: false });
@@ -423,13 +403,8 @@
             }
         }
 
-        // Shuffle options
         shuffle(options);
-
-        // Find correct index
         const correctIndex = options.findIndex(o => o.correct);
-
-        // The original code string for display
         const originalDisplay = originalCodeString.join('');
 
         return {
@@ -461,36 +436,21 @@
         }
 
         const q = questions[currentQuestionIndex];
-        
-        // Update Counter
+
         questionCounterEl.textContent = `Question ${currentQuestionIndex + 1} of ${TOTAL_QUESTIONS}`;
 
         // Render Grid
-        let gridHtml = '';
-        // Headers
-        gridHtml += `<div class="grid-cell header-cell">Letter</div>`;
-        gridHtml += `<div class="grid-cell header-cell">Number</div>`;
-        gridHtml += `<div class="grid-cell header-cell">Symbol</div>`;
-        gridHtml += `<div class="grid-cell header-cell">Col</div>`; // Just a label
-        
-        // This loop renders the grid row by row. 
-        // The original table has headers in one row, then values below. 
-        // To match the look, we need to structure it as columns.
-        // Let's create a grid with 4 columns (the "columns" of the test).
-        // Each test column has 3 rows (Letter, Number, Symbol).
-        
-        // We'll build a new grid display layout.
-        gridDisplayEl.innerHTML = ''; // Clear
-        
-        // Create a header row
+        gridDisplayEl.innerHTML = '';
+
+        // Header row: column labels
         for (let i = 0; i < 4; i++) {
             const header = document.createElement('div');
             header.className = 'grid-cell header-cell';
-            header.textContent = `Col ${i+1}`;
+            header.textContent = `Col ${i + 1}`;
             gridDisplayEl.appendChild(header);
         }
-        
-        // Create rows for Letter, Number, Symbol
+
+        // Rows for Letter, Number, Symbol
         const types = ['letter', 'number', 'symbol'];
         types.forEach(type => {
             for (let col = 0; col < 4; col++) {
@@ -507,36 +467,18 @@
         // Render Options
         optionsContainer.innerHTML = '';
         const labels = ['A', 'B', 'C', 'D', 'E'];
-        
+
         q.options.forEach((opt, index) => {
             const btn = document.createElement('button');
             btn.className = 'option-btn';
             btn.dataset.index = index;
             btn.innerHTML = `<span class="option-label">${labels[index]}</span><span class="option-content">${opt.code}</span>`;
-            
             btn.addEventListener('click', () => selectOption(index));
-            
-            // Highlight if previously selected (for review, not currently implemented as we auto-advance)
-            // But we could check a userAnswers array.
-            
             optionsContainer.appendChild(btn);
         });
 
-        // Enable Next button? 
-        // In the real test you might not be able to go back. 
-        // We'll auto-advance on click to simulate the speed.
-        // So the "Next" button is just a fallback if they don't click? 
-        // Actually, let's make it so clicking an option immediately moves to next.
-        // That's more stressful and realistic.
-        
-        // Reset next button state
-        nextBtn.disabled = true; 
-        // We don't actually need the next button if we auto-advance.
-        // But let's keep it for the "Skip" functionality or if they want to review.
-        // Let's hide it to force auto-advance.
-        nextBtn.style.display = 'none'; 
-        // Or keep it but disable. 
-        // Let's keep it hidden for now to keep UI clean, auto-advance on click.
+        nextBtn.disabled = true;
+        nextBtn.style.display = 'none';
     }
 
     /**
@@ -547,20 +489,13 @@
 
         const q = questions[currentQuestionIndex];
         const buttons = optionsContainer.querySelectorAll('.option-btn');
-        
-        // Disable all buttons to prevent double clicking
+
         buttons.forEach(btn => btn.classList.add('disabled'));
-        
-        // Mark selected
         buttons[selectedIndex].classList.add('selected');
-        
-        // Check correctness
+
         const isCorrect = (selectedIndex === q.correctIndex);
-        if (isCorrect) {
-            score++;
-        }
-        
-        // Save answer
+        if (isCorrect) score++;
+
         userAnswers.push({
             questionIndex: currentQuestionIndex,
             selected: selectedIndex,
@@ -568,7 +503,6 @@
             isCorrect: isCorrect
         });
 
-        // Brief delay then next question
         setTimeout(() => {
             currentQuestionIndex++;
             if (currentQuestionIndex < TOTAL_QUESTIONS && isTestActive) {
@@ -576,7 +510,7 @@
             } else if (currentQuestionIndex >= TOTAL_QUESTIONS) {
                 endTest();
             }
-        }, 150); // 150ms delay to show selection feedback
+        }, 150);
     }
 
     /**
@@ -584,28 +518,26 @@
      */
     function startTest() {
         if (isTestActive) return;
-        
+
         isTestActive = true;
         currentQuestionIndex = 0;
         score = 0;
         userAnswers = [];
         timeRemaining = TIME_LIMIT_SECONDS;
-        
+
         generateTest();
         renderQuestion();
-        
+
         startBtn.disabled = true;
         startBtn.textContent = 'Test Running...';
         statusMessage.textContent = 'Select the correct alternative as fast as you can.';
-        
-        // Update timer display
+
         updateTimerDisplay();
-        
-        // Start interval
+
         timerInterval = setInterval(() => {
             timeRemaining--;
             updateTimerDisplay();
-            
+
             if (timeRemaining <= 0) {
                 endTest();
             }
@@ -619,8 +551,7 @@
         const mins = Math.floor(timeRemaining / 60);
         const secs = timeRemaining % 60;
         timerEl.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-        
-        // Color coding
+
         timerEl.classList.remove('warning', 'danger');
         if (timeRemaining <= 30) {
             timerEl.classList.add('danger');
@@ -635,24 +566,19 @@
     function endTest() {
         if (!isTestActive) return;
         isTestActive = false;
-        
+
         clearInterval(timerInterval);
         timerInterval = null;
-        
-        // If time ran out, we might have unanswered questions.
-        // The score is already calculated for answered ones.
-        
-        // Calculate final stats
+
         const answeredCount = userAnswers.length;
         const accuracy = answeredCount > 0 ? Math.round((score / answeredCount) * 100) : 0;
-        
-        // Show result view
+
         testView.style.display = 'none';
         resultView.style.display = 'block';
-        
+
         finalScoreEl.textContent = `${score}/${TOTAL_QUESTIONS}`;
         finalAccuracyEl.textContent = `Accuracy: ${accuracy}% (${answeredCount} attempted)`;
-        
+
         if (timeRemaining <= 0) {
             resultTitle.textContent = "Time's Up!";
             resultMessage.textContent = "You ran out of time. Speed and accuracy are both key.";
@@ -660,8 +586,7 @@
             resultTitle.textContent = "Test Complete";
             resultMessage.textContent = "You finished all questions. Well done.";
         }
-        
-        // Additional feedback based on score
+
         if (score === TOTAL_QUESTIONS) {
             resultMessage.textContent += " Perfect score! You are ready.";
             resultMessage.style.color = 'var(--success)';
@@ -674,8 +599,7 @@
             resultMessage.textContent += " Keep practicing to improve your speed.";
             resultMessage.style.color = 'var(--danger)';
         }
-        
-        // Clean up UI
+
         startBtn.textContent = 'Test Finished';
         nextBtn.disabled = true;
         statusMessage.textContent = 'Refresh to try again.';
@@ -683,11 +607,9 @@
 
     // --- Event Listeners ---
     startBtn.addEventListener('click', startTest);
-    
-    // We don't really need Next button if auto-advancing, but we'll wire it to skip if needed.
+
     nextBtn.addEventListener('click', () => {
         if (!isTestActive) return;
-        // Treat as skip
         currentQuestionIndex++;
         if (currentQuestionIndex < TOTAL_QUESTIONS) {
             renderQuestion();
@@ -696,20 +618,15 @@
         }
     });
 
-    // Initialize display (pre-start state)
-    // Show a dummy grid or empty state?
-    // Let's generate a sample question to show the layout, but disable interaction.
+    // --- Demo Preview (shown before test starts) ---
     (function initDemo() {
-        // Just render a demo question to show what it looks like.
-        // But we don't start the timer.
         const demoQ = generateQuestion();
-        
-        // Render grid
+
         gridDisplayEl.innerHTML = '';
         for (let i = 0; i < 4; i++) {
             const header = document.createElement('div');
             header.className = 'grid-cell header-cell';
-            header.textContent = `Col ${i+1}`;
+            header.textContent = `Col ${i + 1}`;
             gridDisplayEl.appendChild(header);
         }
         const types = ['letter', 'number', 'symbol'];
@@ -721,10 +638,9 @@
                 gridDisplayEl.appendChild(cell);
             }
         });
-        
+
         codeDisplayEl.textContent = demoQ.originalCode;
-        
-        // Render demo options (disabled)
+
         optionsContainer.innerHTML = '';
         const labels = ['A', 'B', 'C', 'D', 'E'];
         demoQ.options.forEach((opt, index) => {
@@ -733,7 +649,7 @@
             btn.innerHTML = `<span class="option-label">${labels[index]}</span><span class="option-content">${opt.code}</span>`;
             optionsContainer.appendChild(btn);
         });
-        
+
         questionCounterEl.textContent = "Demo Question";
         statusMessage.textContent = "Click 'Start Test' to begin. The demo above shows the layout.";
     })();
