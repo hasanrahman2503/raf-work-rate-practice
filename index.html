@@ -232,6 +232,42 @@
             font-size: 1.5rem;
             color: #8b949e;
         }
+        .time-big {
+            font-size: 1.5rem;
+            color: var(--text);
+            font-family: var(--font-mono);
+            margin-top: 8px;
+        }
+        .time-big.over {
+            color: var(--danger);
+        }
+        .time-big.under {
+            color: var(--success);
+        }
+
+        .stats-row {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        .stat-block {
+            text-align: center;
+        }
+        .stat-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #8b949e;
+            margin-bottom: 4px;
+        }
+        .stat-value {
+            font-size: 1.4rem;
+            font-family: var(--font-mono);
+            font-weight: 700;
+            color: #fff;
+        }
     </style>
 </head>
 <body>
@@ -266,9 +302,22 @@
     <!-- Result Screen -->
     <div class="result-screen" id="result-view">
         <h2 id="resultTitle">Test Complete</h2>
+
         <div class="score-big" id="finalScore">0/20</div>
         <p class="accuracy-big" id="finalAccuracy">Accuracy: 0%</p>
-        <p id="resultMessage" style="margin-top: 20px;">Well done.</p>
+
+        <div class="stats-row">
+            <div class="stat-block">
+                <div class="stat-label">Time Taken</div>
+                <div class="stat-value" id="finalTime">00:00</div>
+            </div>
+            <div class="stat-block">
+                <div class="stat-label">Avg / Question</div>
+                <div class="stat-value" id="avgPerQuestion">0.0s</div>
+            </div>
+        </div>
+
+        <p id="resultMessage" style="margin-top: 24px;">Well done.</p>
         <button class="btn" onclick="location.reload()" style="margin-top: 20px;">Try Again</button>
     </div>
 </div>
@@ -287,6 +336,8 @@
     let timeRemaining = TIME_LIMIT_SECONDS;
     let isTestActive = false;
     let userAnswers = [];
+    let testStartTime = null;    // Wall-clock ms when test began
+    let testEndTime = null;      // Wall-clock ms when test ended
 
     // --- DOM Elements ---
     const timerEl = document.getElementById('timerDisplay');
@@ -301,6 +352,8 @@
     const resultView = document.getElementById('result-view');
     const finalScoreEl = document.getElementById('finalScore');
     const finalAccuracyEl = document.getElementById('finalAccuracy');
+    const finalTimeEl = document.getElementById('finalTime');
+    const avgPerQuestionEl = document.getElementById('avgPerQuestion');
     const resultTitle = document.getElementById('resultTitle');
     const resultMessage = document.getElementById('resultMessage');
 
@@ -320,17 +373,7 @@
         return array;
     }
 
-    /**
-     * Generates a single question.
-     *
-     * Rules (matching the real RAF Work Rate test):
-     * - The CODE is EITHER all letters OR all numbers (never mixed).
-     * - The CORRECT ANSWER is a mix of letters/numbers/symbols, built from the
-     *   same columns as the code, with a random DIFFERENT type per position.
-     * - Distractors can be any mix of types.
-     */
     function generateQuestion() {
-        // 1. Build a 4-column grid.
         const shuffledLetters = shuffle([...LETTERS_POOL]).slice(0, 4);
         const shuffledNumbers = shuffle([...NUMBERS_POOL]).slice(0, 4);
         const shuffledSymbols = shuffle([...SYMBOLS_POOL]).slice(0, 4);
@@ -344,12 +387,11 @@
             });
         }
 
-        // 2. Pick 3 columns for the code.
         const columnIndices = [0, 1, 2, 3];
         shuffle(columnIndices);
         const codeColumns = columnIndices.slice(0, 3);
 
-        // 3. CODE is all-letters OR all-numbers.
+        // CODE: all letters OR all numbers
         const codeType = Math.random() < 0.5 ? 'letter' : 'number';
         const originalCodeItems = [];
         const originalCodeString = [];
@@ -360,8 +402,7 @@
             originalCodeString.push(item);
         }
 
-        // 4. CORRECT ANSWER: for each code position, pick a DIFFERENT type
-        //    from the SAME column (could be letter, number, or symbol).
+        // CORRECT ANSWER: random different type from same column, per position
         const correctAlternativeString = [];
         for (let item of originalCodeItems) {
             const col = item.column;
@@ -371,7 +412,7 @@
         }
         const correctAlternativeJoined = correctAlternativeString.join('');
 
-        // 5. Distractors: random mix of types from random columns.
+        // DISTRACTORS
         const options = [];
         options.push({ code: correctAlternativeJoined, correct: true });
 
@@ -395,11 +436,11 @@
         const originalDisplay = originalCodeString.join('');
 
         return {
-            grid: grid,
+            grid,
             originalCode: originalDisplay,
             originalItems: originalCodeItems,
-            options: options,
-            correctIndex: correctIndex
+            options,
+            correctIndex
         };
     }
 
@@ -419,7 +460,6 @@
         const q = questions[currentQuestionIndex];
         questionCounterEl.textContent = `Question ${currentQuestionIndex + 1} of ${TOTAL_QUESTIONS}`;
 
-        // Grid
         gridDisplayEl.innerHTML = '';
         for (let i = 0; i < 4; i++) {
             const header = document.createElement('div');
@@ -436,10 +476,8 @@
             }
         });
 
-        // Code
         codeDisplayEl.textContent = q.originalCode;
 
-        // Options
         optionsContainer.innerHTML = '';
         const labels = ['A', 'B', 'C', 'D', 'E'];
         q.options.forEach((opt, index) => {
@@ -492,6 +530,8 @@
         score = 0;
         userAnswers = [];
         timeRemaining = TIME_LIMIT_SECONDS;
+        testStartTime = Date.now();
+        testEndTime = null;
 
         generateTest();
         renderQuestion();
@@ -522,15 +562,28 @@
         }
     }
 
+    function formatSeconds(totalSeconds) {
+        const m = Math.floor(totalSeconds / 60);
+        const s = Math.floor(totalSeconds % 60);
+        return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    }
+
     function endTest() {
         if (!isTestActive) return;
         isTestActive = false;
+        testEndTime = Date.now();
 
         clearInterval(timerInterval);
         timerInterval = null;
 
+        // Calculate elapsed time
+        const elapsedMs = testEndTime - testStartTime;
+        const elapsedSeconds = elapsedMs / 1000;
+        const elapsedRounded = Math.floor(elapsedSeconds);
+
         const answeredCount = userAnswers.length;
         const accuracy = answeredCount > 0 ? Math.round((score / answeredCount) * 100) : 0;
+        const avgPerQ = answeredCount > 0 ? (elapsedSeconds / answeredCount) : 0;
 
         testView.style.display = 'none';
         resultView.style.display = 'block';
@@ -538,25 +591,37 @@
         finalScoreEl.textContent = `${score}/${TOTAL_QUESTIONS}`;
         finalAccuracyEl.textContent = `Accuracy: ${accuracy}% (${answeredCount} attempted)`;
 
-        if (timeRemaining <= 0) {
-            resultTitle.textContent = "Time's Up!";
-            resultMessage.textContent = "You ran out of time. Speed and accuracy are both key.";
-        } else {
+        // Time taken
+        finalTimeEl.textContent = formatSeconds(elapsedRounded);
+
+        // Average per question
+        avgPerQuestionEl.textContent = `${avgPerQ.toFixed(1)}s`;
+
+        // Determine finish reason & show context
+        if (answeredCount >= TOTAL_QUESTIONS) {
+            // Finished all questions — came in under time
             resultTitle.textContent = "Test Complete";
-            resultMessage.textContent = "You finished all questions. Well done.";
+            const leftover = TIME_LIMIT_SECONDS - elapsedRounded;
+            resultMessage.textContent = `You finished all ${TOTAL_QUESTIONS} questions with ${formatSeconds(leftover)} to spare.`;
+            resultMessage.style.color = 'var(--success)';
+            finalTimeEl.classList.add('under');
+        } else {
+            // Ran out of time
+            resultTitle.textContent = "Time's Up!";
+            resultMessage.textContent = `You ran out of time after answering ${answeredCount} of ${TOTAL_QUESTIONS} questions.`;
+            resultMessage.style.color = 'var(--danger)';
+            finalTimeEl.classList.add('over');
         }
 
+        // Performance feedback
         if (score === TOTAL_QUESTIONS) {
             resultMessage.textContent += " Perfect score! You are ready.";
-            resultMessage.style.color = 'var(--success)';
         } else if (score >= 15) {
             resultMessage.textContent += " Excellent work rate.";
-            resultMessage.style.color = 'var(--success)';
         } else if (score >= 10) {
-            resultMessage.textContent += " Good effort. Practice your scanning speed.";
+            resultMessage.textContent += " Good effort — practice your scanning speed.";
         } else {
             resultMessage.textContent += " Keep practicing to improve your speed.";
-            resultMessage.style.color = 'var(--danger)';
         }
 
         startBtn.textContent = 'Test Finished';
