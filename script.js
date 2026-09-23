@@ -8,19 +8,14 @@ let correctAnswer = '';
 let correctAnswerLetters = '';
 let timeLeft = 240;
 let timerInterval = null;
-let questionCount = 0;
 let correctCount = 0;
-let answered = false;
-let testActive = false;
 let allQuestions = [];
 let currentQuestionIndex = 0;
 
-// Generate random number between min and max
 function randomNum(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-// Generate random numbers (unique)
 function generateRandomNumbers() {
     const nums = [];
     const availableNums = [1, 2, 3, 4, 5, 6, 7, 8, 9];
@@ -32,7 +27,6 @@ function generateRandomNumbers() {
     return nums;
 }
 
-// Generate random symbols (unique)
 function generateRandomSymbols() {
     const syms = [...symbols];
     const selected = [];
@@ -44,10 +38,8 @@ function generateRandomSymbols() {
     return selected;
 }
 
-// Convert input to standardized format (letters)
 function normalizeAnswer(input) {
     if (!input) return '';
-    
     const clean = input.replace(/\s+/g, '').toUpperCase();
     const result = [];
     
@@ -59,7 +51,7 @@ function normalizeAnswer(input) {
             const index = symbols.indexOf(char);
             result.push(letters[index]);
         }
-        else if (!isNaN(char) && char !== ' ') {
+        else if (!isNaN(char)) {
             const num = parseInt(char);
             const numIndex = currentTable[1].indexOf(num);
             if (numIndex !== -1) {
@@ -67,24 +59,22 @@ function normalizeAnswer(input) {
             }
         }
     }
-    
     return result.join('');
 }
 
-// Start test
 function startTest() {
-    testActive = true;
-    questionCount = 0;
+    console.log('Start Test clicked');
+    
+    // Hide start, show question
+    document.getElementById('startScreen').style.display = 'none';
+    document.getElementById('questionScreen').style.display = 'block';
+    
     correctCount = 0;
     allQuestions = [];
     timeLeft = 240;
     currentQuestionIndex = 0;
     
-    // Hide start screen, show question screen
-    document.getElementById('startScreen').style.display = 'none';
-    document.getElementById('questionScreen').style.display = 'block';
-    
-    // Pre-generate all 20 questions
+    // Generate all 20 questions
     for (let i = 0; i < 20; i++) {
         const numbers = generateRandomNumbers();
         const randomSymbols = generateRandomSymbols();
@@ -100,7 +90,7 @@ function startTest() {
             code.push(letters[randomNum(0, 3)]);
         }
         
-        const correctLetters = [...code];
+        const correctLetters = code.join('');
         const answer = code.map(letter => {
             const index = letters.indexOf(letter);
             return table[1][index];
@@ -117,12 +107,16 @@ function startTest() {
         });
     }
     
-    startTimer();
+    console.log('Questions generated:', allQuestions.length);
+    
+    // Start timer and display first question
     displayQuestion(0);
+    startTimer();
 }
 
-// Display question
 function displayQuestion(index) {
+    console.log('Displaying question:', index);
+    
     if (index >= 20) {
         endTest();
         return;
@@ -133,7 +127,7 @@ function displayQuestion(index) {
     currentTable = question.table;
     currentCode = question.code;
     correctAnswer = question.correctAnswer;
-    correctAnswerLetters = question.correctLetters.join('');
+    correctAnswerLetters = question.correctLetters;
     
     // Update question number
     document.getElementById('questionNumber').textContent = index + 1;
@@ -148,21 +142,18 @@ function displayQuestion(index) {
     // Display code
     document.getElementById('code').textContent = currentCode.join(' ');
     
-    // Generate options if not answered
+    // Generate and display options
     if (!question.answered) {
         const options = [correctAnswer];
         
         while (options.length < 5) {
-            const wrongOption = currentCode.map(() => {
-                return randomNum(1, 9);
-            }).join(' ');
-            
+            const wrongOption = currentCode.map(() => randomNum(1, 9)).join(' ');
             if (!options.includes(wrongOption)) {
                 options.push(wrongOption);
             }
         }
         
-        // Shuffle
+        // Shuffle options
         for (let i = options.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [options[i], options[j]] = [options[j], options[i]];
@@ -170,75 +161,37 @@ function displayQuestion(index) {
         
         // Display options
         for (let i = 0; i < 5; i++) {
-            const btn = document.getElementById(`opt${i}`);
-            btn.textContent = options[i];
-            btn.parentElement.classList.remove('selected');
-            btn.parentElement.disabled = false;
-            btn.parentElement.style.background = 'white';
-            btn.parentElement.style.color = '#333';
+            document.getElementById(`opt${i}`).textContent = options[i];
+            document.getElementById(`opt${i}`).parentElement.disabled = false;
+            document.getElementById(`opt${i}`).parentElement.style.background = 'white';
+            document.getElementById(`opt${i}`).parentElement.style.color = '#333';
         }
         
         document.getElementById('feedback').textContent = '';
         document.getElementById('feedback').className = 'feedback';
-    } else {
-        displayPreviousAnswer(question);
     }
     
-    // Show/hide next button
+    // Update button text
     if (index === 19) {
         document.getElementById('nextBtn').textContent = 'Submit Test';
     } else {
         document.getElementById('nextBtn').textContent = 'Next Question';
     }
     
-    questionCount = index + 1;
-    updateStats();
+    // Update stats
+    document.getElementById('score').textContent = correctCount + '/' + (index + 1);
+    const accuracy = (index + 1) === 0 ? 0 : Math.round((correctCount / (index + 1)) * 100);
+    document.getElementById('accuracy').textContent = accuracy + '%';
+    
     document.getElementById('nextBtn').style.display = 'block';
 }
 
-// Display previous answer
-function displayPreviousAnswer(question) {
-    const isCorrect = question.correct;
-    
-    for (let i = 0; i < 5; i++) {
-        const btn = document.getElementById(`opt${i}`);
-        const optionText = btn.textContent;
-        
-        btn.parentElement.disabled = true;
-        
-        if (normalizeAnswer(optionText) === normalizeAnswer(question.userAnswer)) {
-            btn.parentElement.classList.add('selected');
-            if (isCorrect) {
-                btn.parentElement.style.background = '#22c55e';
-                btn.parentElement.style.color = 'white';
-            } else {
-                btn.parentElement.style.background = '#ef4444';
-                btn.parentElement.style.color = 'white';
-            }
-        } else if (isCorrect && normalizeAnswer(optionText) === correctAnswerLetters) {
-            btn.parentElement.style.background = '#22c55e';
-            btn.parentElement.style.color = 'white';
-        }
-    }
-    
-    if (isCorrect) {
-        document.getElementById('feedback').textContent = '✓ Correct!';
-        document.getElementById('feedback').className = 'feedback correct';
-    } else {
-        document.getElementById('feedback').textContent = '✗ Incorrect. Answer: ' + correctAnswer;
-        document.getElementById('feedback').className = 'feedback incorrect';
-    }
-}
-
-// Check answer
 function checkAnswer(optionIndex) {
     const question = allQuestions[currentQuestionIndex];
     if (question.answered) return;
     
     const selectedOption = document.getElementById(`opt${optionIndex}`).textContent;
-    const normalizedAnswer = normalizeAnswer(selectedOption);
-    
-    const isCorrect = normalizedAnswer === correctAnswerLetters;
+    const isCorrect = normalizeAnswer(selectedOption) === normalizeAnswer(correctAnswerLetters);
     
     question.answered = true;
     question.userAnswer = selectedOption;
@@ -248,19 +201,17 @@ function checkAnswer(optionIndex) {
         correctCount++;
         document.getElementById('feedback').textContent = '✓ Correct!';
         document.getElementById('feedback').className = 'feedback correct';
-        document.getElementById(`opt${optionIndex}`).parentElement.classList.add('selected');
         document.getElementById(`opt${optionIndex}`).parentElement.style.background = '#22c55e';
         document.getElementById(`opt${optionIndex}`).parentElement.style.color = 'white';
     } else {
         document.getElementById('feedback').textContent = '✗ Incorrect. Answer: ' + correctAnswer;
         document.getElementById('feedback').className = 'feedback incorrect';
-        document.getElementById(`opt${optionIndex}`).parentElement.classList.add('selected');
         document.getElementById(`opt${optionIndex}`).parentElement.style.background = '#ef4444';
         document.getElementById(`opt${optionIndex}`).parentElement.style.color = 'white';
         
         // Show correct answer
         for (let i = 0; i < 5; i++) {
-            if (normalizeAnswer(document.getElementById(`opt${i}`).textContent) === correctAnswerLetters) {
+            if (normalizeAnswer(document.getElementById(`opt${i}`).textContent) === normalizeAnswer(correctAnswerLetters)) {
                 document.getElementById(`opt${i}`).parentElement.style.background = '#22c55e';
                 document.getElementById(`opt${i}`).parentElement.style.color = 'white';
             }
@@ -272,11 +223,13 @@ function checkAnswer(optionIndex) {
         document.getElementById(`opt${i}`).parentElement.disabled = true;
     }
     
-    updateStats();
+    document.getElementById('score').textContent = correctCount + '/' + (currentQuestionIndex + 1);
+    const accuracy = Math.round((correctCount / (currentQuestionIndex + 1)) * 100);
+    document.getElementById('accuracy').textContent = accuracy + '%';
 }
 
-// Timer
 function startTimer() {
+    console.log('Timer started');
     timerInterval = setInterval(() => {
         timeLeft--;
         updateTimerDisplay();
@@ -288,7 +241,6 @@ function startTimer() {
     }, 1000);
 }
 
-// Update timer display
 function updateTimerDisplay() {
     const minutes = Math.floor(timeLeft / 60);
     const seconds = timeLeft % 60;
@@ -296,38 +248,4 @@ function updateTimerDisplay() {
     
     if (timeLeft <= 30) {
         document.getElementById('timer').classList.add('warning');
-    } else {
-        document.getElementById('timer').classList.remove('warning');
     }
-}
-
-// Next question
-function nextQuestion() {
-    const nextIndex = currentQuestionIndex + 1;
-    if (nextIndex < 20) {
-        displayQuestion(nextIndex);
-    } else {
-        endTest();
-    }
-}
-
-// End test
-function endTest() {
-    testActive = false;
-    clearInterval(timerInterval);
-    
-    correctCount = allQuestions.filter(q => q.correct).length;
-    
-    const accuracy = Math.round((correctCount / 20) * 100);
-    const timeTaken = 240 - timeLeft;
-    const minutes = Math.floor(timeTaken / 60);
-    const seconds = timeTaken % 60;
-    
-    document.getElementById('questionScreen').innerHTML = `
-        <div style="text-align: center; padding: 40px 20px;">
-            <h2 style="margin-bottom: 30px;">Test Complete!</h2>
-            
-            <div style="background: #f5f5f5; padding: 30px; border-radius: 8px; margin-bottom: 30px;">
-                <div style="margin-bottom: 20px;">
-                    <p style="color: #666; font-size: 14px; margin-bottom: 5px;">SCORE</p>
-                    <p style="font-size: 40px; font-weight:
