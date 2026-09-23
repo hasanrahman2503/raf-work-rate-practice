@@ -71,35 +71,6 @@ function normalizeAnswer(input) {
     return result.join('');
 }
 
-// Show start screen
-function showStartScreen() {
-    const qbox = document.querySelector('.question-box');
-    qbox.innerHTML = `
-        <div style="text-align: center; padding: 40px 20px;">
-            <h2 style="margin-bottom: 20px;">RAF Work Rate Practice Test</h2>
-            <p style="font-size: 16px; margin-bottom: 30px; color: #666;">
-                20 Questions<br>
-                4 Minutes Total<br>
-                12 Seconds Per Question (Average)
-            </p>
-            <button onclick="startTest()" style="
-                padding: 15px 40px;
-                font-size: 18px;
-                background: #667eea;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                cursor: pointer;
-                font-weight: bold;
-            ">Start Test</button>
-        </div>
-    `;
-    document.getElementById('score').textContent = '0/0';
-    document.getElementById('accuracy').textContent = '0%';
-    document.getElementById('timer').textContent = '4:00';
-    document.getElementById('nextBtn').style.display = 'none';
-}
-
 // Start test
 function startTest() {
     testActive = true;
@@ -108,6 +79,10 @@ function startTest() {
     allQuestions = [];
     timeLeft = 240;
     currentQuestionIndex = 0;
+    
+    // Hide start screen, show question screen
+    document.getElementById('startScreen').style.display = 'none';
+    document.getElementById('questionScreen').style.display = 'block';
     
     // Pre-generate all 20 questions
     for (let i = 0; i < 20; i++) {
@@ -348,49 +323,11 @@ function endTest() {
     const minutes = Math.floor(timeTaken / 60);
     const seconds = timeTaken % 60;
     
-    document.querySelector('.question-box').innerHTML = `
+    document.getElementById('questionScreen').innerHTML = `
         <div style="text-align: center; padding: 40px 20px;">
             <h2 style="margin-bottom: 30px;">Test Complete!</h2>
             
             <div style="background: #f5f5f5; padding: 30px; border-radius: 8px; margin-bottom: 30px;">
                 <div style="margin-bottom: 20px;">
                     <p style="color: #666; font-size: 14px; margin-bottom: 5px;">SCORE</p>
-                    <p style="font-size: 40px; font-weight: bold; color: #667eea;">${correctCount}/20</p>
-                </div>
-                
-                <div style="margin-bottom: 20px;">
-                    <p style="color: #666; font-size: 14px; margin-bottom: 5px;">ACCURACY</p>
-                    <p style="font-size: 32px; font-weight: bold; color: #667eea;">${accuracy}%</p>
-                </div>
-                
-                <div>
-                    <p style="color: #666; font-size: 14px; margin-bottom: 5px;">TIME TAKEN</p>
-                    <p style="font-size: 24px; font-weight: bold; color: #667eea;">${minutes}m ${seconds}s</p>
-                </div>
-            </div>
-            
-            <button onclick="location.reload()" style="
-                padding: 15px 40px;
-                font-size: 16px;
-                background: #667eea;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                cursor: pointer;
-                font-weight: bold;
-            ">Try Again</button>
-        </div>
-    `;
-    
-    document.getElementById('nextBtn').style.display = 'none';
-}
-
-// Update stats
-function updateStats() {
-    document.getElementById('score').textContent = correctCount + '/' + questionCount;
-    const accuracy = questionCount === 0 ? 0 : Math.round((correctCount / questionCount) * 100);
-    document.getElementById('accuracy').textContent = accuracy + '%';
-}
-
-// Show start screen on load
-showStartScreen();
+                    <p style="font-size: 40px; font-weight:
