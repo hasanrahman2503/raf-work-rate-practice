@@ -1,28 +1,743 @@
-# RAF Work Rate Test Simulator
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAF Work Rate Test Simulation</title>
+    <style>
+        :root {
+            --bg: #0d1117;
+            --card-bg: #161b22;
+            --border: #30363d;
+            --text: #c9d1d9;
+            --accent: #58a6ff;
+            --success: #3fb950;
+            --danger: #f85149;
+            --font-mono: 'SF Mono', 'Consolas', 'Liberation Mono', Menlo, monospace;
+        }
 
-A browser-based simulation of the RAF Work Rate (Code Checking) test used 
-in RAF aptitude assessments.
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
 
-## What it does
-- Generates 20 randomized questions from a shuffled grid of letters, 
-  numbers, and symbols
-- 4-minute timer (matching the real test conditions)
-- Auto-advances on answer selection
-- Scores accuracy and completion
+        .container {
+            width: 100%;
+            max-width: 700px;
+            background-color: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+            position: relative;
+        }
 
-## How to use
-Open `index.html` in any modern browser, or visit the live demo:
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 16px;
+        }
 
-**[Live Demo](https://yourusername.github.io/raf-work-rate-test/)**
+        h1 {
+            font-size: 1.2rem;
+            margin: 0;
+            color: #fff;
+            letter-spacing: 0.5px;
+        }
 
-## How the test works
-You're given a code (e.g. `RDS`). You must find the option (A–E) that 
-uses the *other items* from the *same columns* in the *same order*.
+        .timer {
+            font-family: var(--font-mono);
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--accent);
+        }
+        .timer.warning { color: #d29922; }
+        .timer.danger { color: var(--danger); animation: pulse 1s infinite; }
 
-## Disclaimer
-This is an unofficial practice tool. It is not affiliated with or 
-endorsed by the UK Ministry of Defence or the Royal Air Force. 
-Actual test conditions and grids may differ.
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
 
-## License
-MIT (or whatever you prefer)
+        .question-counter {
+            font-size: 0.9rem;
+            color: #8b949e;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .grid-display {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin: 20px 0;
+            background: #0d1117;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        .grid-cell {
+            text-align: center;
+            font-family: var(--font-mono);
+            font-size: 1.2rem;
+            padding: 8px 4px;
+            background: #1c2128;
+            border-radius: 4px;
+            color: #e6edf3;
+        }
+        .grid-cell.header-cell {
+            background: transparent;
+            color: #8b949e;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .code-display {
+            text-align: center;
+            font-family: var(--font-mono);
+            font-size: 2rem;
+            font-weight: 700;
+            color: #fff;
+            background: #1c2128;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid var(--accent);
+            letter-spacing: 4px;
+        }
+
+        .options {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .option-btn {
+            display: flex;
+            align-items: center;
+            background: #21262d;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 14px 16px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            color: var(--text);
+            font-size: 1rem;
+            text-align: left;
+            width: 100%;
+            font-family: inherit;
+        }
+        .option-btn:hover:not(.disabled) {
+            border-color: #8b949e;
+            background: #30363d;
+        }
+        .option-btn:active:not(.disabled) {
+            transform: scale(0.99);
+        }
+        .option-btn.selected {
+            border-color: var(--accent);
+            background: #1f3a5f;
+        }
+        .option-btn.disabled {
+            pointer-events: none;
+            opacity: 0.6;
+        }
+
+        .option-label {
+            font-weight: 700;
+            color: var(--accent);
+            margin-right: 15px;
+            min-width: 20px;
+        }
+
+        .option-content {
+            font-family: var(--font-mono);
+            font-size: 1.1rem;
+            letter-spacing: 2px;
+        }
+
+        .controls {
+            margin-top: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .btn {
+            background: var(--accent);
+            color: #0d1117;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-weight: 700;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: opacity 0.2s;
+        }
+        .btn:hover { opacity: 0.9; }
+        .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .btn-secondary {
+            background: #21262d;
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+        .btn-secondary:hover { background: #30363d; }
+
+        .status-bar {
+            margin-top: 16px;
+            font-size: 0.85rem;
+            color: #8b949e;
+            text-align: center;
+            min-height: 20px;
+        }
+
+        .result-screen {
+            display: none;
+            text-align: center;
+            padding: 20px 0;
+        }
+        .result-screen h2 {
+            color: var(--accent);
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+        .result-screen p {
+            font-size: 1.1rem;
+            line-height: 1.6;
+            color: #8b949e;
+        }
+        .score-big {
+            font-size: 3rem;
+            font-weight: 800;
+            color: var(--accent);
+            font-family: var(--font-mono);
+        }
+        .accuracy-big {
+            font-size: 1.5rem;
+            color: #8b949e;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container" id="app">
+    <!-- Main Test UI -->
+    <div id="test-view">
+        <div class="header">
+            <h1>RAF Work Rate</h1>
+            <div class="timer" id="timerDisplay">04:00</div>
+        </div>
+
+        <div class="question-counter" id="questionCounter">Question 1 of 20</div>
+
+        <div class="grid-display" id="gridDisplay">
+            <!-- Populated by JS -->
+        </div>
+
+        <div class="code-display" id="codeDisplay">---</div>
+
+        <div class="options" id="optionsContainer">
+            <!-- Buttons injected by JS -->
+        </div>
+
+        <div class="controls">
+            <button class="btn btn-secondary" id="startBtn">Start Test</button>
+            <button class="btn" id="nextBtn" disabled>Next Question</button>
+        </div>
+        <div class="status-bar" id="statusMessage">Click "Start Test" to begin your 4-minute timer.</div>
+    </div>
+
+    <!-- Result Screen -->
+    <div class="result-screen" id="result-view">
+        <h2 id="resultTitle">Test Complete</h2>
+        <div class="score-big" id="finalScore">0/20</div>
+        <p class="accuracy-big" id="finalAccuracy">Accuracy: 0%</p>
+        <p id="resultMessage" style="margin-top: 20px;">Well done.</p>
+        <button class="btn" onclick="location.reload()" style="margin-top: 20px;">Try Again</button>
+    </div>
+</div>
+
+<script>
+    // --- Configuration ---
+    const TOTAL_QUESTIONS = 20;
+    const TIME_LIMIT_SECONDS = 240; // 4 minutes
+    const OPTION_COUNT = 5;
+
+    // --- State ---
+    let currentQuestionIndex = 0;
+    let questions = [];
+    let score = 0;
+    let timerInterval = null;
+    let timeRemaining = TIME_LIMIT_SECONDS;
+    let isTestActive = false;
+    let userAnswers = [];
+
+    // --- DOM Elements ---
+    const timerEl = document.getElementById('timerDisplay');
+    const questionCounterEl = document.getElementById('questionCounter');
+    const gridDisplayEl = document.getElementById('gridDisplay');
+    const codeDisplayEl = document.getElementById('codeDisplay');
+    const optionsContainer = document.getElementById('optionsContainer');
+    const startBtn = document.getElementById('startBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const statusMessage = document.getElementById('statusMessage');
+    const testView = document.getElementById('test-view');
+    const resultView = document.getElementById('result-view');
+    const finalScoreEl = document.getElementById('finalScore');
+    const finalAccuracyEl = document.getElementById('finalAccuracy');
+    const resultTitle = document.getElementById('resultTitle');
+    const resultMessage = document.getElementById('resultMessage');
+
+    // --- Character Pools (to simulate random grids) ---
+    // Note: In the real test, symbols are limited to specific shapes.
+    // We use simple ASCII symbols here for broad compatibility.
+    const LETTERS_POOL = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+    const NUMBERS_POOL = '0123456789'.split('');
+    const SYMBOLS_POOL = ['●', '▲', '▼', '■', '★', '♦', '♣', '♠', '♥', '◊', '○', '□', '△', '▽', '※', '§', '¶', '†', '‡', 'µ', '¶', 'Ω', 'Σ', 'Φ', 'Ψ', 'α', 'β', 'γ', 'δ', 'ε'];
+
+    // --- Core Logic ---
+
+    /**
+     * Shuffles an array in place (Fisher-Yates).
+     */
+    function shuffle(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]];
+        }
+        return array;
+    }
+
+    /**
+     * Generates a single question object.
+     * Structure:
+     * {
+     *   grid: { letters: [], numbers: [], symbols: [] }, // Each has 4 items
+     *   code: ['R', 'D', 'S'], // Mixed types
+     *   options: [ { code: '7▼3', correct: false }, ... ],
+     *   correctIndex: 0
+     * }
+     */
+    function generateQuestion() {
+        // 1. Create a grid with 4 columns.
+        // We pick 4 distinct letters, numbers, and symbols.
+        const shuffledLetters = shuffle([...LETTERS_POOL]).slice(0, 4);
+        const shuffledNumbers = shuffle([...NUMBERS_POOL]).slice(0, 4);
+        const shuffledSymbols = shuffle([...SYMBOLS_POOL]).slice(0, 4);
+
+        // Grid structure: Each column index (0-3) maps to { letter, number, symbol }
+        const grid = [];
+        for (let i = 0; i < 4; i++) {
+            grid.push({
+                letter: shuffledLetters[i],
+                number: shuffledNumbers[i],
+                symbol: shuffledSymbols[i]
+            });
+        }
+
+        // 2. Generate the original code.
+        // Choose 3 random column indices.
+        const columnIndices = [0, 1, 2, 3];
+        shuffle(columnIndices);
+        const codeColumns = columnIndices.slice(0, 3); // The columns used for this code
+
+        // For each of the 3 code columns, randomly pick a type: letter, number, or symbol.
+        const types = ['letter', 'number', 'symbol'];
+        const originalCodeItems = [];
+        const originalCodeString = [];
+
+        for (let col of codeColumns) {
+            const type = types[Math.floor(Math.random() * types.length)];
+            const item = grid[col][type];
+            originalCodeItems.push({ column: col, type: type, value: item });
+            originalCodeString.push(item);
+        }
+
+        // 3. Generate the correct alternative code.
+        // For each part of the original code, pick a DIFFERENT type from the SAME column.
+        const correctAlternativeItems = [];
+        const correctAlternativeString = [];
+
+        for (let item of originalCodeItems) {
+            const col = item.column;
+            const availableTypes = ['letter', 'number', 'symbol'].filter(t => t !== item.type);
+            const newType = availableTypes[Math.floor(Math.random() * availableTypes.length)];
+            const newVal = grid[col][newType];
+            correctAlternativeItems.push(newVal);
+            correctAlternativeString.push(newVal);
+        }
+
+        // 4. Generate distractors.
+        // We need 4 wrong options. 
+        // Strategies: 
+        // - Swap column order (shuffle correct items)
+        // - Use items from wrong columns
+        // - Mix both
+        
+        const options = [];
+        // Add the correct one
+        options.push({ code: correctAlternativeString.join(''), correct: true });
+
+        while (options.length < OPTION_COUNT) {
+            // Generate a candidate
+            let candidateItems = [];
+            let isValidDistractor = false;
+            let attempts = 0;
+            
+            // Try to make a plausible distractor (using items from the correct columns, but wrong types or order)
+            // Simple strategy: Pick 3 random columns, and pick random types.
+            while (!isValidDistractor && attempts < 50) {
+                attempts++;
+                const randCols = shuffle([...columnIndices]).slice(0, 3); // 3 random distinct columns
+                candidateItems = [];
+                for (let col of randCols) {
+                    const type = types[Math.floor(Math.random() * types.length)];
+                    candidateItems.push(grid[col][type]);
+                }
+                
+                const candidateStr = candidateItems.join('');
+                
+                // Check it's not the correct answer
+                if (candidateStr === correctAlternativeString.join('')) continue;
+                
+                // Check it doesn't already exist in options
+                if (!options.some(o => o.code === candidateStr)) {
+                    isValidDistractor = true;
+                    options.push({ code: candidateStr, correct: false });
+                }
+            }
+        }
+
+        // Shuffle options
+        shuffle(options);
+
+        // Find correct index
+        const correctIndex = options.findIndex(o => o.correct);
+
+        // The original code string for display
+        const originalDisplay = originalCodeString.join('');
+
+        return {
+            grid: grid,
+            originalCode: originalDisplay,
+            originalItems: originalCodeItems,
+            options: options,
+            correctIndex: correctIndex
+        };
+    }
+
+    /**
+     * Pre-generates all 20 questions.
+     */
+    function generateTest() {
+        questions = [];
+        for (let i = 0; i < TOTAL_QUESTIONS; i++) {
+            questions.push(generateQuestion());
+        }
+    }
+
+    /**
+     * Renders the current question to the DOM.
+     */
+    function renderQuestion() {
+        if (currentQuestionIndex >= questions.length) {
+            endTest();
+            return;
+        }
+
+        const q = questions[currentQuestionIndex];
+        
+        // Update Counter
+        questionCounterEl.textContent = `Question ${currentQuestionIndex + 1} of ${TOTAL_QUESTIONS}`;
+
+        // Render Grid
+        let gridHtml = '';
+        // Headers
+        gridHtml += `<div class="grid-cell header-cell">Letter</div>`;
+        gridHtml += `<div class="grid-cell header-cell">Number</div>`;
+        gridHtml += `<div class="grid-cell header-cell">Symbol</div>`;
+        gridHtml += `<div class="grid-cell header-cell">Col</div>`; // Just a label
+        
+        // This loop renders the grid row by row. 
+        // The original table has headers in one row, then values below. 
+        // To match the look, we need to structure it as columns.
+        // Let's create a grid with 4 columns (the "columns" of the test).
+        // Each test column has 3 rows (Letter, Number, Symbol).
+        
+        // We'll build a new grid display layout.
+        gridDisplayEl.innerHTML = ''; // Clear
+        
+        // Create a header row
+        for (let i = 0; i < 4; i++) {
+            const header = document.createElement('div');
+            header.className = 'grid-cell header-cell';
+            header.textContent = `Col ${i+1}`;
+            gridDisplayEl.appendChild(header);
+        }
+        
+        // Create rows for Letter, Number, Symbol
+        const types = ['letter', 'number', 'symbol'];
+        types.forEach(type => {
+            for (let col = 0; col < 4; col++) {
+                const cell = document.createElement('div');
+                cell.className = 'grid-cell';
+                cell.textContent = q.grid[col][type];
+                gridDisplayEl.appendChild(cell);
+            }
+        });
+
+        // Render Code
+        codeDisplayEl.textContent = q.originalCode;
+
+        // Render Options
+        optionsContainer.innerHTML = '';
+        const labels = ['A', 'B', 'C', 'D', 'E'];
+        
+        q.options.forEach((opt, index) => {
+            const btn = document.createElement('button');
+            btn.className = 'option-btn';
+            btn.dataset.index = index;
+            btn.innerHTML = `<span class="option-label">${labels[index]}</span><span class="option-content">${opt.code}</span>`;
+            
+            btn.addEventListener('click', () => selectOption(index));
+            
+            // Highlight if previously selected (for review, not currently implemented as we auto-advance)
+            // But we could check a userAnswers array.
+            
+            optionsContainer.appendChild(btn);
+        });
+
+        // Enable Next button? 
+        // In the real test you might not be able to go back. 
+        // We'll auto-advance on click to simulate the speed.
+        // So the "Next" button is just a fallback if they don't click? 
+        // Actually, let's make it so clicking an option immediately moves to next.
+        // That's more stressful and realistic.
+        
+        // Reset next button state
+        nextBtn.disabled = true; 
+        // We don't actually need the next button if we auto-advance.
+        // But let's keep it for the "Skip" functionality or if they want to review.
+        // Let's hide it to force auto-advance.
+        nextBtn.style.display = 'none'; 
+        // Or keep it but disable. 
+        // Let's keep it hidden for now to keep UI clean, auto-advance on click.
+    }
+
+    /**
+     * Handles option selection.
+     */
+    function selectOption(selectedIndex) {
+        if (!isTestActive) return;
+
+        const q = questions[currentQuestionIndex];
+        const buttons = optionsContainer.querySelectorAll('.option-btn');
+        
+        // Disable all buttons to prevent double clicking
+        buttons.forEach(btn => btn.classList.add('disabled'));
+        
+        // Mark selected
+        buttons[selectedIndex].classList.add('selected');
+        
+        // Check correctness
+        const isCorrect = (selectedIndex === q.correctIndex);
+        if (isCorrect) {
+            score++;
+        }
+        
+        // Save answer
+        userAnswers.push({
+            questionIndex: currentQuestionIndex,
+            selected: selectedIndex,
+            correct: q.correctIndex,
+            isCorrect: isCorrect
+        });
+
+        // Brief delay then next question
+        setTimeout(() => {
+            currentQuestionIndex++;
+            if (currentQuestionIndex < TOTAL_QUESTIONS && isTestActive) {
+                renderQuestion();
+            } else if (currentQuestionIndex >= TOTAL_QUESTIONS) {
+                endTest();
+            }
+        }, 150); // 150ms delay to show selection feedback
+    }
+
+    /**
+     * Starts the timer and test.
+     */
+    function startTest() {
+        if (isTestActive) return;
+        
+        isTestActive = true;
+        currentQuestionIndex = 0;
+        score = 0;
+        userAnswers = [];
+        timeRemaining = TIME_LIMIT_SECONDS;
+        
+        generateTest();
+        renderQuestion();
+        
+        startBtn.disabled = true;
+        startBtn.textContent = 'Test Running...';
+        statusMessage.textContent = 'Select the correct alternative as fast as you can.';
+        
+        // Update timer display
+        updateTimerDisplay();
+        
+        // Start interval
+        timerInterval = setInterval(() => {
+            timeRemaining--;
+            updateTimerDisplay();
+            
+            if (timeRemaining <= 0) {
+                endTest();
+            }
+        }, 1000);
+    }
+
+    /**
+     * Updates the timer display text and color.
+     */
+    function updateTimerDisplay() {
+        const mins = Math.floor(timeRemaining / 60);
+        const secs = timeRemaining % 60;
+        timerEl.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        
+        // Color coding
+        timerEl.classList.remove('warning', 'danger');
+        if (timeRemaining <= 30) {
+            timerEl.classList.add('danger');
+        } else if (timeRemaining <= 60) {
+            timerEl.classList.add('warning');
+        }
+    }
+
+    /**
+     * Ends the test and shows results.
+     */
+    function endTest() {
+        if (!isTestActive) return;
+        isTestActive = false;
+        
+        clearInterval(timerInterval);
+        timerInterval = null;
+        
+        // If time ran out, we might have unanswered questions.
+        // The score is already calculated for answered ones.
+        
+        // Calculate final stats
+        const answeredCount = userAnswers.length;
+        const accuracy = answeredCount > 0 ? Math.round((score / answeredCount) * 100) : 0;
+        
+        // Show result view
+        testView.style.display = 'none';
+        resultView.style.display = 'block';
+        
+        finalScoreEl.textContent = `${score}/${TOTAL_QUESTIONS}`;
+        finalAccuracyEl.textContent = `Accuracy: ${accuracy}% (${answeredCount} attempted)`;
+        
+        if (timeRemaining <= 0) {
+            resultTitle.textContent = "Time's Up!";
+            resultMessage.textContent = "You ran out of time. Speed and accuracy are both key.";
+        } else {
+            resultTitle.textContent = "Test Complete";
+            resultMessage.textContent = "You finished all questions. Well done.";
+        }
+        
+        // Additional feedback based on score
+        if (score === TOTAL_QUESTIONS) {
+            resultMessage.textContent += " Perfect score! You are ready.";
+            resultMessage.style.color = 'var(--success)';
+        } else if (score >= 15) {
+            resultMessage.textContent += " Excellent work rate.";
+            resultMessage.style.color = 'var(--success)';
+        } else if (score >= 10) {
+            resultMessage.textContent += " Good effort. Practice your scanning speed.";
+        } else {
+            resultMessage.textContent += " Keep practicing to improve your speed.";
+            resultMessage.style.color = 'var(--danger)';
+        }
+        
+        // Clean up UI
+        startBtn.textContent = 'Test Finished';
+        nextBtn.disabled = true;
+        statusMessage.textContent = 'Refresh to try again.';
+    }
+
+    // --- Event Listeners ---
+    startBtn.addEventListener('click', startTest);
+    
+    // We don't really need Next button if auto-advancing, but we'll wire it to skip if needed.
+    nextBtn.addEventListener('click', () => {
+        if (!isTestActive) return;
+        // Treat as skip
+        currentQuestionIndex++;
+        if (currentQuestionIndex < TOTAL_QUESTIONS) {
+            renderQuestion();
+        } else {
+            endTest();
+        }
+    });
+
+    // Initialize display (pre-start state)
+    // Show a dummy grid or empty state?
+    // Let's generate a sample question to show the layout, but disable interaction.
+    (function initDemo() {
+        // Just render a demo question to show what it looks like.
+        // But we don't start the timer.
+        const demoQ = generateQuestion();
+        
+        // Render grid
+        gridDisplayEl.innerHTML = '';
+        for (let i = 0; i < 4; i++) {
+            const header = document.createElement('div');
+            header.className = 'grid-cell header-cell';
+            header.textContent = `Col ${i+1}`;
+            gridDisplayEl.appendChild(header);
+        }
+        const types = ['letter', 'number', 'symbol'];
+        types.forEach(type => {
+            for (let col = 0; col < 4; col++) {
+                const cell = document.createElement('div');
+                cell.className = 'grid-cell';
+                cell.textContent = demoQ.grid[col][type];
+                gridDisplayEl.appendChild(cell);
+            }
+        });
+        
+        codeDisplayEl.textContent = demoQ.originalCode;
+        
+        // Render demo options (disabled)
+        optionsContainer.innerHTML = '';
+        const labels = ['A', 'B', 'C', 'D', 'E'];
+        demoQ.options.forEach((opt, index) => {
+            const btn = document.createElement('button');
+            btn.className = 'option-btn disabled';
+            btn.innerHTML = `<span class="option-label">${labels[index]}</span><span class="option-content">${opt.code}</span>`;
+            optionsContainer.appendChild(btn);
+        });
+        
+        questionCounterEl.textContent = "Demo Question";
+        statusMessage.textContent = "Click 'Start Test' to begin. The demo above shows the layout.";
+    })();
+
+</script>
+</body>
+</html>
