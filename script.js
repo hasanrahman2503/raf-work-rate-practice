@@ -6,14 +6,14 @@ let currentTable = [];
 let currentCode = [];
 let correctAnswer = '';
 let correctAnswerLetters = '';
-let timeLeft = 240; // 4 minutes total for 20 questions
+let timeLeft = 240;
 let timerInterval = null;
 let questionCount = 0;
 let correctCount = 0;
 let answered = false;
 let testActive = false;
-let testStarted = false;
 let allQuestions = [];
+let currentQuestionIndex = 0;
 
 // Generate random number between min and max
 function randomNum(min, max) {
@@ -48,24 +48,19 @@ function generateRandomSymbols() {
 function normalizeAnswer(input) {
     if (!input) return '';
     
-    // Remove spaces and convert to uppercase
     const clean = input.replace(/\s+/g, '').toUpperCase();
     const result = [];
     
     for (let char of clean) {
-        // If it's a letter
         if (letters.includes(char)) {
             result.push(char);
         }
-        // If it's a symbol
         else if (symbols.includes(char)) {
             const index = symbols.indexOf(char);
             result.push(letters[index]);
         }
-        // If it's a number
         else if (!isNaN(char) && char !== ' ') {
             const num = parseInt(char);
-            // Find which letter maps to this number in the current table
             const numIndex = currentTable[1].indexOf(num);
             if (numIndex !== -1) {
                 result.push(letters[numIndex]);
@@ -78,7 +73,8 @@ function normalizeAnswer(input) {
 
 // Show start screen
 function showStartScreen() {
-    document.querySelector('.question-box').innerHTML = `
+    const qbox = document.querySelector('.question-box');
+    qbox.innerHTML = `
         <div style="text-align: center; padding: 40px 20px;">
             <h2 style="margin-bottom: 20px;">RAF Work Rate Practice Test</h2>
             <p style="font-size: 16px; margin-bottom: 30px; color: #666;">
@@ -104,61 +100,14 @@ function showStartScreen() {
     document.getElementById('nextBtn').style.display = 'none';
 }
 
-// Restore HTML structure
-function restoreQuestionBox() {
-    document.querySelector('.question-box').innerHTML = `
-        <h2>Question <span id="questionNumber">1</span></h2>
-        
-        <div class="table-section">
-            <table id="dataTable">
-                <tr>
-                    <td id="cell00"></td>
-                    <td id="cell01"></td>
-                    <td id="cell02"></td>
-                    <td id="cell03"></td>
-                </tr>
-                <tr>
-                    <td id="cell10"></td>
-                    <td id="cell11"></td>
-                    <td id="cell12"></td>
-                    <td id="cell13"></td>
-                </tr>
-                <tr>
-                    <td id="cell20"></td>
-                    <td id="cell21"></td>
-                    <td id="cell22"></td>
-                    <td id="cell23"></td>
-                </tr>
-            </table>
-        </div>
-
-        <div class="code-section">
-            <p>Code: <span id="code" class="code-display">A B C</span></p>
-        </div>
-
-        <div class="options">
-            <button class="option" onclick="checkAnswer(0)"><span id="opt0">1 2 3</span></button>
-            <button class="option" onclick="checkAnswer(1)"><span id="opt1">1 2 3</span></button>
-            <button class="option" onclick="checkAnswer(2)"><span id="opt2">1 2 3</span></button>
-            <button class="option" onclick="checkAnswer(3)"><span id="opt3">1 2 3</span></button>
-            <button class="option" onclick="checkAnswer(4)"><span id="opt4">1 2 3</span></button>
-        </div>
-
-        <div id="feedback" class="feedback"></div>
-    `;
-}
-
 // Start test
 function startTest() {
     testActive = true;
-    testStarted = true;
     questionCount = 0;
     correctCount = 0;
     allQuestions = [];
     timeLeft = 240;
-    
-    // Restore HTML structure first
-    restoreQuestionBox();
+    currentQuestionIndex = 0;
     
     // Pre-generate all 20 questions
     for (let i = 0; i < 20; i++) {
@@ -204,13 +153,12 @@ function displayQuestion(index) {
         return;
     }
     
+    currentQuestionIndex = index;
     const question = allQuestions[index];
     currentTable = question.table;
     currentCode = question.code;
     correctAnswer = question.correctAnswer;
     correctAnswerLetters = question.correctLetters.join('');
-    
-    answered = question.answered;
     
     // Update question number
     document.getElementById('questionNumber').textContent = index + 1;
@@ -249,7 +197,6 @@ function displayQuestion(index) {
         for (let i = 0; i < 5; i++) {
             const btn = document.getElementById(`opt${i}`);
             btn.textContent = options[i];
-            btn.parentElement.onclick = () => checkAnswer(i);
             btn.parentElement.classList.remove('selected');
             btn.parentElement.disabled = false;
             btn.parentElement.style.background = 'white';
@@ -259,7 +206,6 @@ function displayQuestion(index) {
         document.getElementById('feedback').textContent = '';
         document.getElementById('feedback').className = 'feedback';
     } else {
-        // Show previous answer
         displayPreviousAnswer(question);
     }
     
@@ -311,8 +257,7 @@ function displayPreviousAnswer(question) {
 
 // Check answer
 function checkAnswer(optionIndex) {
-    const questionIndex = questionCount - 1;
-    const question = allQuestions[questionIndex];
+    const question = allQuestions[currentQuestionIndex];
     if (question.answered) return;
     
     const selectedOption = document.getElementById(`opt${optionIndex}`).textContent;
@@ -383,7 +328,7 @@ function updateTimerDisplay() {
 
 // Next question
 function nextQuestion() {
-    const nextIndex = questionCount;
+    const nextIndex = currentQuestionIndex + 1;
     if (nextIndex < 20) {
         displayQuestion(nextIndex);
     } else {
@@ -396,7 +341,6 @@ function endTest() {
     testActive = false;
     clearInterval(timerInterval);
     
-    // Count correct from all questions
     correctCount = allQuestions.filter(q => q.correct).length;
     
     const accuracy = Math.round((correctCount / 20) * 100);
