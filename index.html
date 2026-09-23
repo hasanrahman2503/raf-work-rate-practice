@@ -21,11 +21,32 @@
             </div>
             <div class="stat">
                 <span class="label">Time:</span>
-                <span id="timer" class="value">12</span>s
+                <span id="timer" class="value">4:00</span>
             </div>
         </div>
 
-        <div class="question-box">
+        <!-- START SCREEN -->
+        <div id="startScreen" class="question-box" style="text-align: center; padding: 40px 20px;">
+            <h2 style="margin-bottom: 20px;">RAF Work Rate Practice Test</h2>
+            <p style="font-size: 16px; margin-bottom: 30px; color: #666;">
+                20 Questions<br>
+                4 Minutes Total<br>
+                12 Seconds Per Question (Average)
+            </p>
+            <button onclick="startTest()" style="
+                padding: 15px 40px;
+                font-size: 18px;
+                background: #667eea;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                cursor: pointer;
+                font-weight: bold;
+            ">Start Test</button>
+        </div>
+
+        <!-- QUESTION SCREEN -->
+        <div id="questionScreen" class="question-box" style="display: none;">
             <h2>Question <span id="questionNumber">1</span></h2>
             
             <div class="table-section">
