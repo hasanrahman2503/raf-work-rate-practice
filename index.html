@@ -1,4 +1,4 @@
-#<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -304,16 +304,14 @@
     const resultTitle = document.getElementById('resultTitle');
     const resultMessage = document.getElementById('resultMessage');
 
-    // --- Character Pools (to simulate random grids) ---
+    // --- Character Pools ---
     const LETTERS_POOL = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
     const NUMBERS_POOL = '0123456789'.split('');
     const SYMBOLS_POOL = ['●', '▲', '▼', '■', '★', '♦', '♣', '♠', '♥', '◊', '○', '□', '△', '▽', '※', '§', '¶', '†', '‡', 'µ', 'Ω', 'Σ', 'Φ', 'Ψ', 'α', 'β', 'γ', 'δ', 'ε'];
+    const ALL_TYPES = ['letter', 'number', 'symbol'];
 
     // --- Core Logic ---
 
-    /**
-     * Shuffles an array in place (Fisher-Yates).
-     */
     function shuffle(array) {
         for (let i = array.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
@@ -323,15 +321,16 @@
     }
 
     /**
-     * Generates a single question object.
-     * 
+     * Generates a single question.
+     *
      * Rules (matching the real RAF Work Rate test):
-     * - The code is EITHER all letters OR all numbers.
-     * - The correct alternative swaps letters <-> numbers, using the same columns.
-     * - Distractors use the same character pool as the correct answer.
+     * - The CODE is EITHER all letters OR all numbers (never mixed).
+     * - The CORRECT ANSWER is a mix of letters/numbers/symbols, built from the
+     *   same columns as the code, with a random DIFFERENT type per position.
+     * - Distractors can be any mix of types.
      */
     function generateQuestion() {
-        // 1. Create a grid with 4 columns.
+        // 1. Build a 4-column grid.
         const shuffledLetters = shuffle([...LETTERS_POOL]).slice(0, 4);
         const shuffledNumbers = shuffle([...NUMBERS_POOL]).slice(0, 4);
         const shuffledSymbols = shuffle([...SYMBOLS_POOL]).slice(0, 4);
@@ -345,14 +344,13 @@
             });
         }
 
-        // 2. Choose 3 random column indices for the code.
+        // 2. Pick 3 columns for the code.
         const columnIndices = [0, 1, 2, 3];
         shuffle(columnIndices);
         const codeColumns = columnIndices.slice(0, 3);
 
-        // 3. The code is EITHER all letters OR all numbers (matching the real test).
+        // 3. CODE is all-letters OR all-numbers.
         const codeType = Math.random() < 0.5 ? 'letter' : 'number';
-
         const originalCodeItems = [];
         const originalCodeString = [];
 
@@ -362,45 +360,34 @@
             originalCodeString.push(item);
         }
 
-        // 4. The correct alternative swaps letters <-> numbers, same columns.
-        //    If code is letters -> answer uses numbers; if code is numbers -> answer uses letters.
-        const alternativeType = codeType === 'letter' ? 'number' : 'letter';
-
-        const correctAlternativeItems = [];
+        // 4. CORRECT ANSWER: for each code position, pick a DIFFERENT type
+        //    from the SAME column (could be letter, number, or symbol).
         const correctAlternativeString = [];
-
         for (let item of originalCodeItems) {
             const col = item.column;
-            const newVal = grid[col][alternativeType];
-            correctAlternativeItems.push(newVal);
-            correctAlternativeString.push(newVal);
+            const availableTypes = ALL_TYPES.filter(t => t !== item.type);
+            const newType = availableTypes[Math.floor(Math.random() * availableTypes.length)];
+            correctAlternativeString.push(grid[col][newType]);
         }
+        const correctAlternativeJoined = correctAlternativeString.join('');
 
-        // 5. Generate distractors using the same character pool (letters or numbers).
+        // 5. Distractors: random mix of types from random columns.
         const options = [];
-        options.push({ code: correctAlternativeString.join(''), correct: true });
+        options.push({ code: correctAlternativeJoined, correct: true });
 
         while (options.length < OPTION_COUNT) {
-            let candidateItems = [];
-            let isValidDistractor = false;
-            let attempts = 0;
-
-            while (!isValidDistractor && attempts < 50) {
-                attempts++;
-                const randCols = shuffle([...columnIndices]).slice(0, 3);
-                candidateItems = [];
-                for (let col of randCols) {
-                    candidateItems.push(grid[col][alternativeType]);
-                }
-
-                const candidateStr = candidateItems.join('');
-
-                if (candidateStr === correctAlternativeString.join('')) continue;
-                if (!options.some(o => o.code === candidateStr)) {
-                    isValidDistractor = true;
-                    options.push({ code: candidateStr, correct: false });
-                }
+            const randCols = shuffle([...columnIndices]).slice(0, 3);
+            const candidateItems = [];
+            for (let col of randCols) {
+                const type = ALL_TYPES[Math.floor(Math.random() * ALL_TYPES.length)];
+                candidateItems.push(grid[col][type]);
             }
+            const candidateStr = candidateItems.join('');
+
+            if (candidateStr === correctAlternativeJoined) continue;
+            if (options.some(o => o.code === candidateStr)) continue;
+
+            options.push({ code: candidateStr, correct: false });
         }
 
         shuffle(options);
@@ -416,9 +403,6 @@
         };
     }
 
-    /**
-     * Pre-generates all 20 questions.
-     */
     function generateTest() {
         questions = [];
         for (let i = 0; i < TOTAL_QUESTIONS; i++) {
@@ -426,9 +410,6 @@
         }
     }
 
-    /**
-     * Renders the current question to the DOM.
-     */
     function renderQuestion() {
         if (currentQuestionIndex >= questions.length) {
             endTest();
@@ -436,23 +417,17 @@
         }
 
         const q = questions[currentQuestionIndex];
-
         questionCounterEl.textContent = `Question ${currentQuestionIndex + 1} of ${TOTAL_QUESTIONS}`;
 
-        // Render Grid
+        // Grid
         gridDisplayEl.innerHTML = '';
-
-        // Header row: column labels
         for (let i = 0; i < 4; i++) {
             const header = document.createElement('div');
             header.className = 'grid-cell header-cell';
             header.textContent = `Col ${i + 1}`;
             gridDisplayEl.appendChild(header);
         }
-
-        // Rows for Letter, Number, Symbol
-        const types = ['letter', 'number', 'symbol'];
-        types.forEach(type => {
+        ['letter', 'number', 'symbol'].forEach(type => {
             for (let col = 0; col < 4; col++) {
                 const cell = document.createElement('div');
                 cell.className = 'grid-cell';
@@ -461,13 +436,12 @@
             }
         });
 
-        // Render Code
+        // Code
         codeDisplayEl.textContent = q.originalCode;
 
-        // Render Options
+        // Options
         optionsContainer.innerHTML = '';
         const labels = ['A', 'B', 'C', 'D', 'E'];
-
         q.options.forEach((opt, index) => {
             const btn = document.createElement('button');
             btn.className = 'option-btn';
@@ -481,9 +455,6 @@
         nextBtn.style.display = 'none';
     }
 
-    /**
-     * Handles option selection.
-     */
     function selectOption(selectedIndex) {
         if (!isTestActive) return;
 
@@ -513,9 +484,6 @@
         }, 150);
     }
 
-    /**
-     * Starts the timer and test.
-     */
     function startTest() {
         if (isTestActive) return;
 
@@ -537,16 +505,10 @@
         timerInterval = setInterval(() => {
             timeRemaining--;
             updateTimerDisplay();
-
-            if (timeRemaining <= 0) {
-                endTest();
-            }
+            if (timeRemaining <= 0) endTest();
         }, 1000);
     }
 
-    /**
-     * Updates the timer display text and color.
-     */
     function updateTimerDisplay() {
         const mins = Math.floor(timeRemaining / 60);
         const secs = timeRemaining % 60;
@@ -560,9 +522,6 @@
         }
     }
 
-    /**
-     * Ends the test and shows results.
-     */
     function endTest() {
         if (!isTestActive) return;
         isTestActive = false;
@@ -618,7 +577,7 @@
         }
     });
 
-    // --- Demo Preview (shown before test starts) ---
+    // --- Demo Preview ---
     (function initDemo() {
         const demoQ = generateQuestion();
 
@@ -629,8 +588,7 @@
             header.textContent = `Col ${i + 1}`;
             gridDisplayEl.appendChild(header);
         }
-        const types = ['letter', 'number', 'symbol'];
-        types.forEach(type => {
+        ['letter', 'number', 'symbol'].forEach(type => {
             for (let col = 0; col < 4; col++) {
                 const cell = document.createElement('div');
                 cell.className = 'grid-cell';
