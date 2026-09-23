@@ -100,8 +100,52 @@ function showStartScreen() {
     `;
     document.getElementById('score').textContent = '0/0';
     document.getElementById('accuracy').textContent = '0%';
-    document.getElementById('timer').textContent = '240';
+    document.getElementById('timer').textContent = '4:00';
     document.getElementById('nextBtn').style.display = 'none';
+}
+
+// Restore HTML structure
+function restoreQuestionBox() {
+    document.querySelector('.question-box').innerHTML = `
+        <h2>Question <span id="questionNumber">1</span></h2>
+        
+        <div class="table-section">
+            <table id="dataTable">
+                <tr>
+                    <td id="cell00"></td>
+                    <td id="cell01"></td>
+                    <td id="cell02"></td>
+                    <td id="cell03"></td>
+                </tr>
+                <tr>
+                    <td id="cell10"></td>
+                    <td id="cell11"></td>
+                    <td id="cell12"></td>
+                    <td id="cell13"></td>
+                </tr>
+                <tr>
+                    <td id="cell20"></td>
+                    <td id="cell21"></td>
+                    <td id="cell22"></td>
+                    <td id="cell23"></td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="code-section">
+            <p>Code: <span id="code" class="code-display">A B C</span></p>
+        </div>
+
+        <div class="options">
+            <button class="option" onclick="checkAnswer(0)"><span id="opt0">1 2 3</span></button>
+            <button class="option" onclick="checkAnswer(1)"><span id="opt1">1 2 3</span></button>
+            <button class="option" onclick="checkAnswer(2)"><span id="opt2">1 2 3</span></button>
+            <button class="option" onclick="checkAnswer(3)"><span id="opt3">1 2 3</span></button>
+            <button class="option" onclick="checkAnswer(4)"><span id="opt4">1 2 3</span></button>
+        </div>
+
+        <div id="feedback" class="feedback"></div>
+    `;
 }
 
 // Start test
@@ -112,6 +156,9 @@ function startTest() {
     correctCount = 0;
     allQuestions = [];
     timeLeft = 240;
+    
+    // Restore HTML structure first
+    restoreQuestionBox();
     
     // Pre-generate all 20 questions
     for (let i = 0; i < 20; i++) {
@@ -202,7 +249,7 @@ function displayQuestion(index) {
         for (let i = 0; i < 5; i++) {
             const btn = document.getElementById(`opt${i}`);
             btn.textContent = options[i];
-            btn.parentElement.onclick = () => checkAnswer(index, i);
+            btn.parentElement.onclick = () => checkAnswer(i);
             btn.parentElement.classList.remove('selected');
             btn.parentElement.disabled = false;
             btn.parentElement.style.background = 'white';
@@ -225,6 +272,7 @@ function displayQuestion(index) {
     
     questionCount = index + 1;
     updateStats();
+    document.getElementById('nextBtn').style.display = 'block';
 }
 
 // Display previous answer
@@ -262,7 +310,8 @@ function displayPreviousAnswer(question) {
 }
 
 // Check answer
-function checkAnswer(questionIndex, optionIndex) {
+function checkAnswer(optionIndex) {
+    const questionIndex = questionCount - 1;
     const question = allQuestions[questionIndex];
     if (question.answered) return;
     
@@ -304,7 +353,6 @@ function checkAnswer(questionIndex, optionIndex) {
     }
     
     updateStats();
-    document.getElementById('nextBtn').style.display = 'block';
 }
 
 // Timer
@@ -352,6 +400,9 @@ function endTest() {
     correctCount = allQuestions.filter(q => q.correct).length;
     
     const accuracy = Math.round((correctCount / 20) * 100);
+    const timeTaken = 240 - timeLeft;
+    const minutes = Math.floor(timeTaken / 60);
+    const seconds = timeTaken % 60;
     
     document.querySelector('.question-box').innerHTML = `
         <div style="text-align: center; padding: 40px 20px;">
@@ -370,7 +421,7 @@ function endTest() {
                 
                 <div>
                     <p style="color: #666; font-size: 14px; margin-bottom: 5px;">TIME TAKEN</p>
-                    <p style="font-size: 24px; font-weight: bold; color: #667eea;">${Math.floor((240 - timeLeft) / 60)}m ${(240 - timeLeft) % 60}s</p>
+                    <p style="font-size: 24px; font-weight: bold; color: #667eea;">${minutes}m ${seconds}s</p>
                 </div>
             </div>
             
